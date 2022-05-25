@@ -565,6 +565,7 @@ struct ControlsState @0x97ff69c53601abf1 {
   vCruise @22 :Float32;
   upAccelCmd @4 :Float32;
   uiAccelCmd @5 :Float32;
+  udAccelCmd @60 :Float32;
   ufAccelCmd @33 :Float32;
   aTarget @35 :Float32;
   curvature @37 :Float32;  # path curvature from vehicle model
@@ -638,11 +639,26 @@ struct ControlsState @0x97ff69c53601abf1 {
     angleError @3 :Float32;
     p @4 :Float32;
     i @5 :Float32;
-    f @6 :Float32;
-    output @7 :Float32;
-    saturated @8 :Bool;
-    steeringAngleDesiredDeg @9 :Float32;
-   }
+    d @6 :Float32;
+    f @7 :Float32;
+    output @8 :Float32;
+    saturated @9 :Bool;
+    steeringAngleDesiredDeg @10 :Float32;
+  }
+
+  struct LateralTorqueState {
+    active @0 :Bool;
+    error @1 :Float32;
+    errorRate @8 :Float32;
+    p @2 :Float32;
+    i @3 :Float32;
+    d @4 :Float32;
+    f @5 :Float32;
+    output @6 :Float32;
+    saturated @7 :Bool;
+    actualLateralAccel @9 :Float32;
+    desiredLateralAccel @10 :Float32;
+  }
 
   struct LateralTorqueState {
     active @0 :Bool;
