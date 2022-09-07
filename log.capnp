@@ -37,6 +37,8 @@ struct InitData {
   passive @12 :Bool;
   params @17 :Map(Text, Data);
 
+  commands @19 :Map(Text, Data);
+
   enum DeviceType {
     unknown @0;
     neo @1;
@@ -251,9 +253,7 @@ struct GpsLocationData {
   # Represents expected accuracy in meters. (presumably 1 sigma?)
   accuracy @6 :Float32;
 
-  # Timestamp for the location fix.
-  # Milliseconds since January 1, 1970.
-  timestamp @7 :Int64;
+  unixTimestampMillis @7 :Int64;
 
   source @8 :SensorSource;
 
@@ -290,10 +290,10 @@ struct CanData {
 }
 
 struct DeviceState @0xa4d8b5af2aa492eb {
-  usbOnline @12 :Bool;
   networkType @22 :NetworkType;
   networkInfo @31 :NetworkInfo;
   networkStrength @24 :NetworkStrength;
+  networkStats @43 :NetworkStats;
   networkMetered @41 :Bool;
   lastAthenaPingTime @32 :UInt64;
 
@@ -307,13 +307,10 @@ struct DeviceState @0xa4d8b5af2aa492eb {
   cpuUsagePercent @34 :List(Int8);  # per-core cpu usage
 
   # power
-  batteryPercent @8 :Int16;
-  batteryCurrent @15 :Int32;
-  chargingError @17 :Bool;
-  chargingDisabled @18 :Bool;
   offroadPowerUsageUwh @23 :UInt32;
   carBatteryCapacityUwh @25 :UInt32;
   powerDrawW @40 :Float32;
+  somPowerDrawW @42 :Float32;
 
   # device thermals
   cpuTempC @26 :List(Float32);
@@ -368,6 +365,11 @@ struct DeviceState @0xa4d8b5af2aa492eb {
     state @5 :Text;
   }
 
+  struct NetworkStats {
+    wwanTx @0 :Int64;
+    wwanRx @1 :Int64;
+  }
+
   # deprecated
   cpu0DEPRECATED @0 :UInt16;
   cpu1DEPRECATED @1 :UInt16;
@@ -381,6 +383,11 @@ struct DeviceState @0xa4d8b5af2aa492eb {
   batteryStatusDEPRECATED @9 :Text;
   batteryVoltageDEPRECATED @16 :Int32;
   batteryTempCDEPRECATED @29 :Float32;
+  batteryPercentDEPRECATED @8 :Int16;
+  batteryCurrentDEPRECATED @15 :Int32;
+  chargingErrorDEPRECATED @17 :Bool;
+  chargingDisabledDEPRECATED @18 :Bool;
+  usbOnlineDEPRECATED @12 :Bool;
 }
 
 struct PandaState @0xa7649e2575e4591e {
@@ -404,6 +411,7 @@ struct PandaState @0xa7649e2575e4591e {
   heartbeatLost @22 :Bool;
   blockedCnt @24 :UInt32;
   interruptLoad @25 :Float32;
+  fanPower @28 :UInt8;
 
   enum FaultStatus {
     none @0;
@@ -460,7 +468,7 @@ struct PandaState @0xa7649e2575e4591e {
   currentDEPRECATED @1 :UInt32;
   hasGpsDEPRECATED @6 :Bool;
   fanSpeedRpmDEPRECATED @11 :UInt16;
-  usbPowerModeDEPRECATED @12 :PeripheralState.UsbPowerMode;
+  usbPowerModeDEPRECATED @12 :PeripheralState.UsbPowerModeDEPRECATED;
   safetyParamDEPRECATED @20 :Int16;
   safetyParam2DEPRECATED @26 :UInt32;
 }
@@ -470,9 +478,9 @@ struct PeripheralState {
   voltage @1 :UInt32;
   current @2 :UInt32;
   fanSpeedRpm @3 :UInt16;
-  usbPowerMode @4 :UsbPowerMode;
 
-  enum UsbPowerMode @0xa8883583b32c9877 {
+  usbPowerModeDEPRECATED @4 :UsbPowerModeDEPRECATED;
+  enum UsbPowerModeDEPRECATED @0xa8883583b32c9877 {
     none @0;
     client @1;
     cdp @2;
@@ -562,7 +570,8 @@ struct ControlsState @0x97ff69c53601abf1 {
   longControlState @30 :Car.CarControl.Actuators.LongControlState;
   vPid @2 :Float32;
   vTargetLead @3 :Float32;
-  vCruise @22 :Float32;
+  vCruise @22 :Float32;  # actual set speed
+  vCruiseCluster @63 :Float32;  # set speed to display in the UI
   upAccelCmd @4 :Float32;
   uiAccelCmd @5 :Float32;
   udAccelCmd @60 :Float32;
@@ -909,11 +918,11 @@ struct LongitudinalPlan @0xe00b5b3eba12876c {
 
 struct LateralPlan @0xe1e9318e2ae8b51e {
   modelMonoTime @31 :UInt64;
-  laneWidth @0 :Float32;
-  lProb @5 :Float32;
-  rProb @7 :Float32;
+  laneWidthDEPRECATED @0 :Float32;
+  lProbDEPRECATED @5 :Float32;
+  rProbDEPRECATED @7 :Float32;
   dPathPoints @20 :List(Float32);
-  dProb @21 :Float32;
+  dProbDEPRECATED @21 :Float32;
 
   mpcSolutionValid @9 :Bool;
   desire @17 :Desire;
@@ -1079,13 +1088,15 @@ struct ProcLog {
 
 struct GnssMeasurements {
   ubloxMonoTime @0 :UInt64;
-  correctedMeasurements @1 :List(CorrectedMeasurement);
+  gpsWeek @1 :Int16;
+  gpsTimeOfWeek @2 :Float64;
 
-  positionECEF @2 :Measurement;
-  velocityECEF @3 :Measurement;
-  # todo add accuracy of position?
-  # Represents heading in degrees.
-  bearingDeg @4 :Measurement;
+  correctedMeasurements @3 :List(CorrectedMeasurement);
+
+  positionECEF @4 :LiveLocationKalman.Measurement;
+  velocityECEF @5 :LiveLocationKalman.Measurement;
+  # Used for debugging:
+  positionFixECEF @6 :LiveLocationKalman.Measurement;
   # Todo sync this with timing pulse of ublox
 
   struct CorrectedMeasurement {
@@ -1100,6 +1111,14 @@ struct GnssMeasurements {
     # Satellite position and velocity [x,y,z]
     satPos @7 :List(Float64);
     satVel @8 :List(Float64);
+    ephemerisSource @9 :EphemerisSource;
+  }
+
+  struct EphemerisSource {
+    type @0 :EphemerisSourceType;
+    # first epoch in file:
+    gpsWeek @1 :Int16; # -1 if Nav
+    gpsTimeOfWeek @2 :Int32; # -1 if Nav. Integer for seconds is good enough for logs.
   }
 
   enum ConstellationId {
@@ -1113,10 +1132,11 @@ struct GnssMeasurements {
       glonass @6;
   }
 
-  struct Measurement {
-    value @0 : List(Float64);
-    std @1 : Float64;
-    valid @2 : Bool;
+  enum EphemerisSourceType {
+    nav @0;
+    # Different ultra-rapid files:
+    nasaUltraRapid @1;
+    glonassIacUltraRapid @2;
   }
 }
 
@@ -1179,7 +1199,7 @@ struct UbloxGnss {
         carrierPhaseValid @1 :Bool;
         # half cycle valid
         halfCycleValid @2 :Bool;
-        # half sycle subtracted from phase
+        # half cycle subtracted from phase
         halfCycleSubtracted @3 :Bool;
       }
     }
@@ -1622,7 +1642,36 @@ struct Joystick {
   buttons @1: List(Bool);
 }
 
-struct DriverState {
+struct DriverStateV2 {
+  frameId @0 :UInt32;
+  modelExecutionTime @1 :Float32;
+  dspExecutionTime @2 :Float32;
+  rawPredictions @3 :Data;
+
+  poorVisionProb @4 :Float32;
+  wheelOnRightProb @5 :Float32;
+
+  leftDriverData @6 :DriverData;
+  rightDriverData @7 :DriverData;
+
+  struct DriverData {
+    faceOrientation @0 :List(Float32);
+    faceOrientationStd @1 :List(Float32);
+    facePosition @2 :List(Float32);
+    facePositionStd @3 :List(Float32);
+    faceProb @4 :Float32;
+    leftEyeProb @5 :Float32;
+    rightEyeProb @6 :Float32;
+    leftBlinkProb @7 :Float32;
+    rightBlinkProb @8 :Float32;
+    sunglassesProb @9 :Float32;
+    occludedProb @10 :Float32;
+    readyProb @11 :List(Float32);
+    notReadyProb @12 :List(Float32);
+  }
+}
+
+struct DriverStateDEPRECATED @0xb83c6cc593ed0a00 {
   frameId @0 :UInt32;
   modelExecutionTime @14 :Float32;
   dspExecutionTime @16 :Float32;
@@ -1670,8 +1719,8 @@ struct DriverMonitoringState @0xb83cda094a1da284 {
   isLowStd @13 :Bool;
   hiStdCount @14 :UInt32;
   isActiveMode @16 :Bool;
+  isRHD @4 :Bool;
 
-  isRHDDEPRECATED @4 :Bool;
   isPreviewDEPRECATED @15 :Bool;
   rhdCheckedDEPRECATED @5 :Bool;
 }
@@ -1782,6 +1831,9 @@ struct NavInstruction {
   lanes @8 :List(Lane);
   showFull @9 :Bool;
 
+  speedLimit @10 :Float32; # m/s
+  speedLimitSign @11 :SpeedLimitSign;
+
   struct Lane {
     directions @0 :List(Direction);
     active @1 :Bool;
@@ -1795,6 +1847,10 @@ struct NavInstruction {
     straight @3;
   }
 
+  enum SpeedLimitSign {
+    mutcd @0; # US Style
+    vienna @1; # EU Style
+    }
 }
 
 struct NavRoute {
@@ -1811,6 +1867,9 @@ struct EncodeData {
   data @1 :Data;
   header @2 :Data;
   unixTimestampNanos @3 :UInt64;
+}
+
+struct UserFlag {
 }
 
 struct Event {
@@ -1844,8 +1903,8 @@ struct Event {
     ubloxRaw @39 :Data;
     qcomGnss @31 :QcomGnss;
     gpsLocationExternal @48 :GpsLocationData;
+    gpsLocation @21 :GpsLocationData;
     gnssMeasurements @91 :GnssMeasurements;
-    driverState @59 :DriverState;
     liveParameters @61 :LiveParametersData;
     cameraOdometry @63 :CameraOdometry;
     thumbnail @66: Thumbnail;
@@ -1854,6 +1913,7 @@ struct Event {
     driverMonitoringState @71: DriverMonitoringState;
     liveLocationKalman @72 :LiveLocationKalman;
     modelV2 @75 :ModelDataV2;
+    driverStateV2 @92 :DriverStateV2;
 
     # camera stuff, each camera state has a matching encode idx
     roadCameraState @2 :FrameData;
@@ -1878,6 +1938,9 @@ struct Event {
     navInstruction @82 :NavInstruction;
     navRoute @83 :NavRoute;
     navThumbnail @84: Thumbnail;
+
+    # user flags
+    userFlag @93 :UserFlag;
 
     # *********** debug ***********
     testJoystick @52 :Joystick;
@@ -1920,8 +1983,8 @@ struct Event {
     orbFeaturesSummaryDEPRECATED @58 :Legacy.OrbFeaturesSummary;
     featuresDEPRECATED @10 :Legacy.CalibrationFeatures;
     kalmanOdometryDEPRECATED @65 :Legacy.KalmanOdometry;
-    gpsLocationDEPRECATED @21 :GpsLocationData;
     uiLayoutStateDEPRECATED @57 :Legacy.UiLayoutState;
     pandaStateDEPRECATED @12 :PandaState;
+    driverStateDEPRECATED @59 :DriverStateDEPRECATED;
   }
 }
