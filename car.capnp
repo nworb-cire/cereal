@@ -532,14 +532,14 @@ struct CarParams {
     deadzoneBP @4 :List(Float32);
     deadzoneV @5 :List(Float32);
 
-    gasAccelFactor @6 :Float32;
-    gasVEgoFactor @7 :Float32;
-    gasPitchFactor @8 :Float32;
-    gasOffset @9 :Float32;
-    brakeAccelFactor @10 :Float32;
-    brakeVEgoFactor @11 :Float32;
-    brakePitchFactor @12 :Float32;
-    brakeOffset @13 :Float32;
+    gasAccelFactor @7 :Float32;
+    gasVEgoFactor @8 :Float32;
+    gasPitchFactor @9 :Float32;
+    gasOffset @10 :Float32;
+    brakeAccelFactor @11 :Float32;
+    brakeVEgoFactor @12 :Float32;
+    brakePitchFactor @13 :Float32;
+    brakeOffset @14 :Float32;
   }
 
   struct LateralINDITuning {
