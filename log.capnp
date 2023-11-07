@@ -2019,14 +2019,8 @@ struct LiveGasParametersData {
   totalBucketPoints @5 :Float32;
   gasPoints @6 :List(List(Float32));
   brakePoints @7 :List(List(Float32));
-  gasAccelFactor @8 :Float32;
-  gasVEgoFactor @9 :Float32;
-  gasPitchFactor @10 :Float32;
-  gasOffset @11 :Float32;
-  brakeAccelFactor @12 :Float32;
-  brakeVEgoFactor @13 :Float32;
-  brakePitchFactor @14 :Float32;
-  brakeOffset @15 :Float32;
+  gasFactor @8 :List(Float32);
+  brakeFactor @9 :List(Float32);
 }
 
 struct LiveMapDataDEPRECATED {
